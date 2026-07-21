@@ -1,0 +1,38 @@
+name: MyBL Daily Quiz Automation
+
+on:
+  schedule:
+    # প্রতি ৬ ঘণ্টা পর পর রান করবে (দিনে একাধিকবার কুইজ খেলার জন্য)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-mybl-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run MyBL Script
+        run: python mybl_claim.py
+
+      - name: Commit and push updated tokens
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add tokens_mybl.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-updated MyBL access tokens" && git push)
