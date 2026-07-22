@@ -81,6 +81,7 @@ def play_daily_quiz(account):
     token_url = "https://myblapi.banglalink.net/api/trivia/get-trivia-token"
     
     try:
+        # Step 1: Gamize Token সংগ্রহ করা
         response = requests.post(token_url, headers=get_headers(account))
         if response.status_code == 401:
             return False, True 
@@ -101,7 +102,7 @@ def play_daily_quiz(account):
                 print("❌ Failed to parse Gamize token from response.")
                 return False, False
                 
-            print("✅ Got Gamize token. Proceeding to submit answers...")
+            print("✅ Got Gamize token. Fetching today's quiz data...")
             
             gamize_headers = {
                 "x-gamification-api-key": "RQKuhLtyGOq0hppmYbTS",
@@ -111,57 +112,86 @@ def play_daily_quiz(account):
                 "content-type": "application/json"
             }
             
+            # Step 2: আজকের নতুন রুল এবং আইডিগুলো সার্ভার থেকে বের করা
+            rule_url = "https://api.gamize.com/GamificationUserService/reward/get/rule/reward?ruleName=SeasonHome0coin&lang=en"
+            rule_response = requests.get(rule_url, headers=gamize_headers)
+            
+            if rule_response.status_code != 200:
+                print(f"❌ Failed to get quiz rule. Status: {rule_response.status_code}")
+                return False, False
+                
+            rule_data = rule_response.json()
+            spin_wheel = rule_data.get("widget", {}).get("spinWheel", {})
+            
+            if not spin_wheel:
+                print("❌ Quiz data not found in response.")
+                return False, False
+            
+            # ডাইনামিক ডেটা এক্সট্র্যাক্ট করা
+            template_id = spin_wheel.get("id")
+            rule_id = spin_wheel.get("ruleId")
+            lb_id = spin_wheel.get("leaderBoardId")
+            lb_schedule_id = spin_wheel.get("leaderBoardScheduleId")
+            questions = spin_wheel.get("questions", [])
+            
+            if not questions:
+                print("❌ No questions found for today.")
+                return False, False
+                
+            q_no = questions[0].get("questionNo")
+            correct_opt = questions[0].get("correctOption")
+            q_points = questions[0].get("points", 10)
+            q_type = questions[0].get("type", "image")
+            
+            print(f"🔍 Extracted Data -> Question: {q_no}, Answer: {correct_opt}, Rule: {rule_id}")
+            
             transaction_id = os.urandom(12).hex() 
             
-            # Step 2: Activity Played
+            # Step 3: Activity Played
             played_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/played"
             played_payload = {
-                "templateId": "69f399eb0f8d640001f24431",
-                "ruleId": "6a5d0b1396115d000143cf07",
+                "templateId": template_id,
+                "ruleId": rule_id,
                 "offerId": "",
                 "type": 6,
                 "id": transaction_id
             }
             res_played = requests.post(played_url, headers=gamize_headers, json=played_payload)
-            if res_played.status_code != 200:
-                print(f"⚠️ Activity Played API Error: {res_played.status_code} | {res_played.text}")
             
-            # Step 3: Submit Answer
+            # Step 4: Submit Answer
             submit_url = "https://api.gamize.com/GamificationUserService/reward/get/quiz/reward?lang=en"
             submit_payload = {
-                "id": "69f399eb0f8d640001f24431",
+                "id": template_id,
                 "orgId": "187",
                 "questions": [
                     {
                         "correct": True,
-                        "correctOption": "1",
-                        "questionNo": "75",
-                        "selectedOption": "1",
-                        "type": "image",
-                        "points": 10,
-                        "timeOpt": random.randint(4500, 7500) 
+                        "correctOption": correct_opt,
+                        "questionNo": q_no,
+                        "selectedOption": correct_opt,
+                        "type": q_type,
+                        "points": q_points,
+                        "timeOpt": random.randint(12000, 19500) 
                     }
                 ],
-                "ruleId": "6a5d0b1396115d000143cf07",
+                "ruleId": rule_id,
                 "type": 6,
                 "transactionId": transaction_id,
                 "scheduleFlag": True,
-                "leaderBoardId": "65e08b70cf60160001c3f4c1",
-                "leaderBoardScheduleId": "6a5d0b1396115d000143cf09",
+                "leaderBoardId": lb_id,
+                "leaderBoardScheduleId": lb_schedule_id,
                 "leaderBoardSelected": True
             }
             res_submit = requests.post(submit_url, headers=gamize_headers, json=submit_payload)
-            if res_submit.status_code != 200:
-                print(f"⚠️ Submit Answer API Error: {res_submit.status_code} | {res_submit.text}")
             
-            # Step 4: Claim Reward
+            # Step 5: Claim Reward
             claim_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/rewardwon"
             claim_payload = {
                 "id": transaction_id,
-                "offerId": "6a584fe56c0b0300016bf05c",
+                "offerId": "6a584fe56c0b0300016bf05c", # এটি ফিক্সড থাকে সাধারণত
                 "orgId": "187",
-                "ruleId": "6a5d0b1396115d000143cf07",
-                "templateId": "69f399eb0f8d640001f24431",
+                "ruleId": rule_id,
+                "templateId": template_id,
                 "type": 6,
                 "text": "win",
                 "winStatus": True,
