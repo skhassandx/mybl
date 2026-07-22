@@ -2,8 +2,8 @@ name: MyBL Daily Quiz Automation
 
 on:
   schedule:
-    # প্রতি ৬ ঘণ্টা পর পর রান করবে (দিনে একাধিকবার কুইজ খেলার জন্য)
-    - cron: '0 */6 * * *'
+    # প্রতি ৫ ঘণ্টা পর পর রান করবে (সার্ভার জ্যাম এড়াতে ১৩ মিনিটে সেট করা হয়েছে)
+    - cron: '13 */5 * * *'
   workflow_dispatch:
 
 permissions:
