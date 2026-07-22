@@ -1,16 +1,16 @@
-name: Robi Daily Point Claim
+name: MyBL Daily Quiz Automation
 
 on:
   schedule:
-    # বাংলাদেশ সময় সকাল ৬:১০ (UTC সময় রাত 00:10)
-    - cron: '19 0 * * *'
+    # প্রতি ৬ ঘণ্টা পর পর রান করবে (দিনে একাধিকবার কুইজ খেলার জন্য)
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  claim-points:
+  run-mybl-automation:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,12 +27,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Run Script
-        run: python robi_claim.py
+      - name: Run MyBL Script
+        run: python mybl_claim.py
 
       - name: Commit and push updated tokens
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add tokens.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-updated access token" && git push)
+          git add tokens_mybl.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-updated MyBL access tokens" && git push)
