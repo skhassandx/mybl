@@ -98,6 +98,8 @@ def play_daily_quiz(account):
                     
             if not gamize_token:
                 print("❌ Failed to parse Gamize token from response.")
+                # সার্ভার কেন টোকেন দিলো না, তা দেখার জন্য ডিবাগ মেসেজ যোগ করা হলো
+                print(f"🔍 Debug Info - Server Response: {response_data}")
                 return False, False
                 
             print("✅ Got Gamize token. Proceeding to submit answers...")
