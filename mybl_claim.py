@@ -81,7 +81,6 @@ def play_daily_quiz(account):
     token_url = "https://myblapi.banglalink.net/api/trivia/get-trivia-token"
     
     try:
-        # Step 1: MyBL থেকে Gamize এর জন্য টোকেন নেওয়া
         response = requests.post(token_url, headers=get_headers(account))
         if response.status_code == 401:
             return False, True # Token Expired
@@ -94,17 +93,18 @@ def play_daily_quiz(account):
                 if isinstance(response_data["data"], str):
                     gamize_token = response_data["data"]
                 elif isinstance(response_data["data"], dict):
-                    gamize_token = response_data["data"].get("token", "")
+                    # এখানে access_token চেক করার লজিক আপডেট করা হয়েছে
+                    gamize_token = response_data["data"].get("access_token")
+                    if not gamize_token:
+                        gamize_token = response_data["data"].get("token", "")
                     
             if not gamize_token:
                 print("❌ Failed to parse Gamize token from response.")
-                # সার্ভার কেন টোকেন দিলো না, তা দেখার জন্য ডিবাগ মেসেজ যোগ করা হলো
                 print(f"🔍 Debug Info - Server Response: {response_data}")
                 return False, False
                 
             print("✅ Got Gamize token. Proceeding to submit answers...")
             
-            # Gamize API এর জন্য স্পেসিফিক হেডার
             gamize_headers = {
                 "x-gamification-api-key": "RQKuhLtyGOq0hppmYbTS",
                 "x-gamification-identifier-key": gamize_token,
@@ -113,10 +113,8 @@ def play_daily_quiz(account):
                 "content-type": "application/json"
             }
             
-            # অ্যাপের মতো একটি ডাইনামিক ২৪ ক্যারেক্টারের Transaction ID তৈরি করা
             transaction_id = os.urandom(12).hex() 
             
-            # Step 2: Activity Played (কুইজ শুরু করার সিগন্যাল)
             played_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/played"
             played_payload = {
                 "templateId": "69f399eb0f8d640001f24431",
@@ -127,7 +125,6 @@ def play_daily_quiz(account):
             }
             requests.post(played_url, headers=gamize_headers, json=played_payload)
             
-            # Step 3: Submit Answer (সঠিক উত্তর সাবমিট)
             submit_url = "https://api.gamize.com/GamificationUserService/reward/get/quiz/reward?lang=en"
             submit_payload = {
                 "id": "69f399eb0f8d640001f24431",
@@ -153,7 +150,6 @@ def play_daily_quiz(account):
             }
             requests.post(submit_url, headers=gamize_headers, json=submit_payload)
             
-            # Step 4: Claim Reward (রিওয়ার্ড ক্লেইম)
             claim_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/rewardwon"
             claim_payload = {
                 "id": transaction_id,
