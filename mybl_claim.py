@@ -83,7 +83,7 @@ def play_daily_quiz(account):
     try:
         response = requests.post(token_url, headers=get_headers(account))
         if response.status_code == 401:
-            return False, True # Token Expired
+            return False, True 
         
         if response.status_code == 200:
             response_data = response.json()
@@ -93,14 +93,12 @@ def play_daily_quiz(account):
                 if isinstance(response_data["data"], str):
                     gamize_token = response_data["data"]
                 elif isinstance(response_data["data"], dict):
-                    # এখানে access_token চেক করার লজিক আপডেট করা হয়েছে
                     gamize_token = response_data["data"].get("access_token")
                     if not gamize_token:
                         gamize_token = response_data["data"].get("token", "")
                     
             if not gamize_token:
                 print("❌ Failed to parse Gamize token from response.")
-                print(f"🔍 Debug Info - Server Response: {response_data}")
                 return False, False
                 
             print("✅ Got Gamize token. Proceeding to submit answers...")
@@ -115,6 +113,7 @@ def play_daily_quiz(account):
             
             transaction_id = os.urandom(12).hex() 
             
+            # Step 2: Activity Played
             played_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/played"
             played_payload = {
                 "templateId": "69f399eb0f8d640001f24431",
@@ -123,8 +122,11 @@ def play_daily_quiz(account):
                 "type": 6,
                 "id": transaction_id
             }
-            requests.post(played_url, headers=gamize_headers, json=played_payload)
+            res_played = requests.post(played_url, headers=gamize_headers, json=played_payload)
+            if res_played.status_code != 200:
+                print(f"⚠️ Activity Played API Error: {res_played.status_code} | {res_played.text}")
             
+            # Step 3: Submit Answer
             submit_url = "https://api.gamize.com/GamificationUserService/reward/get/quiz/reward?lang=en"
             submit_payload = {
                 "id": "69f399eb0f8d640001f24431",
@@ -148,8 +150,11 @@ def play_daily_quiz(account):
                 "leaderBoardScheduleId": "6a5d0b1396115d000143cf09",
                 "leaderBoardSelected": True
             }
-            requests.post(submit_url, headers=gamize_headers, json=submit_payload)
+            res_submit = requests.post(submit_url, headers=gamize_headers, json=submit_payload)
+            if res_submit.status_code != 200:
+                print(f"⚠️ Submit Answer API Error: {res_submit.status_code} | {res_submit.text}")
             
+            # Step 4: Claim Reward
             claim_url = "https://api.gamize.com/GamificationUserService/usertransaction/activity/rewardwon"
             claim_payload = {
                 "id": transaction_id,
@@ -170,7 +175,7 @@ def play_daily_quiz(account):
             if response_claim.status_code == 200:
                 print("🎉 Daily Quiz Success! Reward claimed.")
             else:
-                print(f"⚠️ Quiz submitted but reward claim returned status: {response_claim.status_code}")
+                print(f"⚠️ Reward claim returned status: {response_claim.status_code} | Debug Info: {response_claim.text}")
                 
             return True, False
         else:
